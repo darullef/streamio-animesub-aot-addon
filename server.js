@@ -5,9 +5,34 @@ const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch
 const AdmZip = require("adm-zip");
 const cors = require("cors");
 const iconv = require("iconv-lite");
+const serverless = require("serverless-http");
 
 const app = express();
 app.use(cors());
+app.set('trust proxy', true);
+
+app.use((req, res, next) => {
+    const host = req.get('host');
+    const protocol = req.protocol;
+
+    const event = req.apiGateway && req.apiGateway.event;
+    let stage = "";
+
+    if (event && event.requestContext && event.requestContext.stage) {
+        const potentialStage = event.requestContext.stage;
+
+        if (host.includes("execute-api")) {
+            stage = `/${potentialStage}`;
+        }
+    }
+
+    const fullUrl = `${protocol}://${host}${stage}`.replace(/\/$/, "");
+
+    console.log(`[SERVER] Obliczony baseUrl: ${fullUrl}`);
+
+    addonInterface.baseUrl = fullUrl;
+    next();
+});
 
 // Funkcja pomocnicza dla idealnego formatu czasu SRT (00:00:00,000)
 function formatTime(assTime) {
@@ -85,6 +110,4 @@ app.get("/download/:id/:sh/:cookie/:filename", async (req, res) => {
 
 app.use("/", getRouter(addonInterface));
 
-app.listen(7000, "0.0.0.0", () => {
-    console.log("Serwer działa na http://192.168.0.209:7000");
-});
+module.exports.handler = serverless(app);

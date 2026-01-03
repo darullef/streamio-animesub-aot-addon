@@ -2,12 +2,12 @@ const {addonBuilder} = require("stremio-addon-sdk");
 const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 
 const manifest = {
-    id: "org.animesub.polskienapisy",
+    id: "org.derulo.shingekinokyojin",
     version: "1.0.0",
-    name: "AnimeSub PL",
-    description: "Addon dostarczający polskie napisy do Twoich ulubionych tytułów.",
+    name: "Shingeki no Kyojin PL",
+    description: "Addon dostarczający polskie napisy do Shingeki no Kyojin.",
     resources: ["subtitles"],
-    types: ["movie", "series"],
+    types: ["series"],
     catalogs: [],
     background: "https://dl.strem.io/addon-background.jpg",
     logNo: "https://dl.strem.io/addon-logNo.png",
@@ -52,15 +52,16 @@ builder.defineSubtitlesHandler(async (args) => {
                 const id = idMatch[1];
                 const sh = shMatch[1];
                 const cookieBase64 = Buffer.from(cookie).toString('base64') || 'none';
-
-                // TWOJE LOKALNE IP KOMPUTERA
-                const localIP = "192.168.0.209";
+                const addonInterface = builder.getInterface();
+                const baseUrl = addonInterface.baseUrl || process.env.BASE_URL || "https://08mdjxx90g.execute-api.eu-west-1.amazonaws.com/dev";
+                const url = `${baseUrl}/download/${id}/${sh}/${cookieBase64}/subtitles.srt`;
+                console.log(`[ADDON] Wygenerowano URL: ${url}`);
 
                 return {
                     subtitles: [
                         {
                             id: `animesub_${id}`,
-                            url: `http://${localIP}:7000/download/${id}/${sh}/${cookieBase64}/subtitles.srt`,
+                            url: url,
                             lang: "pol",
                             label: `AnimeSub PL - Odcinek ${absoluteEpisode}`
                         }
