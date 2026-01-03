@@ -36,7 +36,7 @@ builder.defineSubtitlesHandler(async (args) => {
         const searchQuery = `Shingeki no Kyojin ep${absoluteEpisode}`;
         const searchUrl = `http://animesub.info/szukaj.php?szukane=${encodeURIComponent(searchQuery)}&pTitle=org`;
 
-        console.log(`[ADDON] Szukanie odcinka: ${searchQuery}`);
+        console.log(`[ADDON] Szukanie odcinka: ${searchUrl}`);
 
         try {
             const response = await fetch(searchUrl);
@@ -54,7 +54,7 @@ builder.defineSubtitlesHandler(async (args) => {
                 const cookieBase64 = Buffer.from(cookie).toString('base64') || 'none';
 
                 // TWOJE LOKALNE IP KOMPUTERA
-                const localIP = "192.168.0.2137";
+                const localIP = "192.168.0.209";
 
                 return {
                     subtitles: [
