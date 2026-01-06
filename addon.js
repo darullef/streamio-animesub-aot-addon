@@ -16,7 +16,7 @@ const manifest = {
 const builder = new addonBuilder(manifest);
 
 const SEASON_DATA = {
-    1: 25, 2: 12, 3: 22, 4: 35
+    1: 25, 2: 12, 3: 22, 4: 28
 };
 
 builder.defineSubtitlesHandler(async (args) => {
@@ -33,7 +33,7 @@ builder.defineSubtitlesHandler(async (args) => {
         }
         absoluteEpisode += episode;
 
-        const searchQuery = `Shingeki no Kyojin ep${absoluteEpisode}`;
+        const searchQuery = `Shingeki no Kyojin: The Final Season ep${String(episode).padStart(2, '0')}`;
         const searchUrl = `http://animesub.info/szukaj.php?szukane=${encodeURIComponent(searchQuery)}&pTitle=org`;
 
         console.log(`[ADDON] Szukanie odcinka: ${searchUrl}`);
@@ -45,27 +45,33 @@ builder.defineSubtitlesHandler(async (args) => {
             const setCookie = response.headers.get('set-cookie');
             const cookie = setCookie ? setCookie.split(';')[0] : '';
 
-            const idMatch = html.match(/name="id" value="(\d+)"/);
-            const shMatch = html.match(/name="sh" value="([a-f0-9]+)"/);
+            const animeDesuBlockMatch = RegExp(/~AnimeDesu\.pl<\/a>[\s\S]*?name="id" value="(\d+)"[\s\S]*?name="sh" value="([a-f0-9]+)"/).exec(html);
 
-            if (idMatch && shMatch) {
-                const id = idMatch[1];
-                const sh = shMatch[1];
+            if (animeDesuBlockMatch) {
+                const id = animeDesuBlockMatch[1];
+                const sh = animeDesuBlockMatch[2];
                 const cookieBase64 = Buffer.from(cookie).toString('base64') || 'none';
 
-                // TWOJE LOKALNE IP KOMPUTERA
                 const localIP = "192.168.0.209";
 
+                console.log(`[ADDON] Znaleziono napisy od AnimeDesu.pl`);
+
+                let url = `http://${localIP}:7000/download/${id}/${sh}/${cookieBase64}/subtitles.srt`;
+                console.log(`[ADDON] URL: ${url}`);
                 return {
                     subtitles: [
                         {
                             id: `animesub_${id}`,
-                            url: `http://${localIP}:7000/download/${id}/${sh}/${cookieBase64}/subtitles.srt`,
+                            url: url,
                             lang: "pol",
-                            label: `AnimeSub PL - Odcinek ${absoluteEpisode}`
+                            label: `AnimeSub PL - Odcinek ${absoluteEpisode} (AnimeDesu)`
                         }
                     ]
                 };
+            }
+            else
+            {
+                console.log("Nie znaleziono napisów od autora AnimeDesu.pl");
             }
         } catch (error) {
             console.error("[ERROR] Search error:", error);
