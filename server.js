@@ -1,11 +1,13 @@
 const express = require("express");
-const { getRouter } = require("stremio-addon-sdk");
+const {getRouter} = require("stremio-addon-sdk");
 const addonInterface = require("./addon");
 const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
-const AdmZip = require("adm-zip");
 const cors = require("cors");
 const iconv = require("iconv-lite");
 const serverless = require("serverless-http");
+const fs = require("node:fs");
+const path = require("node:path");
+const {execFile} = require('child_process');
 
 const app = express();
 app.use(cors());
@@ -47,7 +49,7 @@ function convertAssToSrt(assContent) {
     let srtOutput = "";
     let counter = 1;
     for (let line of lines) {
-        if (line.startsWith("Dialogue:")) {
+        if (line.startsWith("Dialogue:") && line.includes("Default")) {
             const parts = line.split(',');
             if (parts.length < 10) continue;
             const start = formatTime(parts[1]);
@@ -63,7 +65,7 @@ function convertAssToSrt(assContent) {
 }
 
 app.get("/download/:id/:sh/:cookie/:filename", async (req, res) => {
-    const { id, sh, cookie } = req.params;
+    const {id, sh, cookie} = req.params;
     console.log(`[SERVER] Próba pobrania ID: ${id}`);
 
     try {
@@ -83,24 +85,47 @@ app.get("/download/:id/:sh/:cookie/:filename", async (req, res) => {
             body: params
         });
 
+        // Zapisz plik ZIPX na dysku
         const buffer = Buffer.from(await response.arrayBuffer());
         if (buffer.length < 500) throw new Error("Błąd sesji");
 
-        const zip = new AdmZip(buffer);
-        const subFile = zip.getEntries().find(e => e.entryName.toLowerCase().match(/\.(txt|srt|ass)$/));
+        const tempZipxPath = path.join(__dirname, `temp_${id}_${Date.now()}.zipx`);
+        const outputDir = path.join(__dirname, `out_${id}_${Date.now()}`);
 
-        if (subFile) {
-            console.log(`[SERVER] Przetwarzanie: ${subFile.entryName}`);
-            let content = iconv.decode(subFile.getData(), "win1250");
+        // Zapisz jako ZIPX
+        fs.writeFileSync(tempZipxPath, buffer);
 
-            if (subFile.entryName.toLowerCase().endsWith(".ass")) {
-                content = convertAssToSrt(content);
+        // Używamy obietnicy, aby poczekać na zakończenie rozpakowywania
+        const {promisify} = require('util');
+        const execFilePromise = promisify(execFile);
+
+        try {
+            // Rozpakuj plik (używamy zmiennej tempZipxPath, nie stringa)
+            await execFilePromise("7z", ["x", tempZipxPath, `-o${outputDir}`, "-y"]);
+
+            // Znajdź rozpakowany plik w katalogu wyjściowym
+            const files = fs.readdirSync(outputDir);
+            const subFileName = files.find(f => f.toLowerCase().match(/\.(txt|srt|ass)$/));
+
+            if (subFileName) {
+                const fullPath = path.join(outputDir, subFileName);
+                console.log(`[SERVER] Przetwarzanie: ${subFileName}`);
+                let content = iconv.decode(fs.readFileSync(fullPath), "win1250");
+
+                if (subFileName.toLowerCase().endsWith(".ass")) {
+                    content = convertAssToSrt(content);
+                }
+
+                const output = iconv.encode(content, "win1250");
+                res.send(output);
+                console.log(`[SERVER] Wysłano napisy.`);
+            } else {
+                throw new Error("Nie znaleziono napisów wewnątrz ZIPX");
             }
-
-            // Konwersja na UTF-8 przed wysłaniem
-            const output = iconv.encode(content, "win1250");
-            res.send(output);
-            console.log(`[SERVER] Wysłano napisy.`);
+        } finally {
+            // Usuń tymczasowy plik i folder po zakończeniu (lub błędzie)
+            if (fs.existsSync(tempZipxPath)) fs.unlinkSync(tempZipxPath);
+            if (fs.existsSync(outputDir)) fs.rmSync(outputDir, {recursive: true, force: true});
         }
     } catch (e) {
         console.error("[SERVER ERROR]", e.message);
