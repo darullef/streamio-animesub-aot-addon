@@ -52,13 +52,12 @@ builder.defineSubtitlesHandler(async (args) => {
                 const sh = animeDesuBlockMatch[2];
                 const cookieBase64 = Buffer.from(cookie).toString('base64') || 'none';
                 const addonInterface = builder.getInterface();
-                const baseUrl = addonInterface.baseUrl || process.env.BASE_URL || "https://08mdjxx90g.execute-api.eu-west-1.amazonaws.com/dev";
+                const baseUrl = addonInterface.baseUrl || process.env.BASE_URL || "https://1rplfcu1m5.execute-api.eu-west-1.amazonaws.com/dev";
                 const url = `${baseUrl}/download/${id}/${sh}/${cookieBase64}/subtitles.srt`;
                 console.log(`[ADDON] Wygenerowano URL: ${url}`);
 
                 console.log(`[ADDON] Znaleziono napisy od AnimeDesu.pl`);
 
-                let url = `http://${localIP}:7000/download/${id}/${sh}/${cookieBase64}/subtitles.srt`;
                 console.log(`[ADDON] URL: ${url}`);
                 return {
                     subtitles: [

@@ -89,8 +89,9 @@ app.get("/download/:id/:sh/:cookie/:filename", async (req, res) => {
         const buffer = Buffer.from(await response.arrayBuffer());
         if (buffer.length < 500) throw new Error("Błąd sesji");
 
-        const tempZipxPath = path.join(__dirname, `temp_${id}_${Date.now()}.zipx`);
-        const outputDir = path.join(__dirname, `out_${id}_${Date.now()}`);
+        // Zmiana: używamy /tmp zamiast __dirname
+        const tempZipxPath = path.join('/tmp', `temp_${id}_${Date.now()}.zipx`);
+        const outputDir = path.join('/tmp', `out_${id}_${Date.now()}`);
 
         // Zapisz jako ZIPX
         fs.writeFileSync(tempZipxPath, buffer);
@@ -101,7 +102,7 @@ app.get("/download/:id/:sh/:cookie/:filename", async (req, res) => {
 
         try {
             // Rozpakuj plik (używamy zmiennej tempZipxPath, nie stringa)
-            await execFilePromise("7z", ["x", tempZipxPath, `-o${outputDir}`, "-y"]);
+            await execFilePromise("/opt/bin/7za", ["x", tempZipxPath, `-o${outputDir}`, "-y"]);
 
             // Znajdź rozpakowany plik w katalogu wyjściowym
             const files = fs.readdirSync(outputDir);
